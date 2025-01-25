@@ -3,6 +3,7 @@ use std::ops::Deref;
 use anchor_client::solana_client::rpc_config::RpcSendTransactionConfig;
 
 use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
+use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_client::{solana_sdk::pubkey::Pubkey, solana_sdk::signer::Signer, Program};
 
 use anyhow::*;
@@ -22,6 +23,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
     params: RemoveAllLiquidityParameters,
     program: &Program<C>,
     transaction_config: RpcSendTransactionConfig,
+    compute_unit_price: Option<Instruction>,
 ) -> Result<()> {
     let RemoveAllLiquidityParameters { lb_pair, position } = params;
 
@@ -34,7 +36,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
         transaction_config,
         lb_pair_state.token_x_mint,
         program.payer(),
-        None,
+        compute_unit_price.clone(),
     )
     .await?;
 
@@ -43,7 +45,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
         transaction_config,
         lb_pair_state.token_y_mint,
         program.payer(),
-        None,
+        compute_unit_price.clone(),
     )
     .await?;
 
@@ -84,7 +86,12 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
 
     let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
 
-    let request_builder = program.request();
+    let mut request_builder = program.request();
+
+    if let Some(compute_unit_price) = compute_unit_price {
+        request_builder = request_builder.instruction(compute_unit_price);
+    }
+
     let signature = request_builder
         .instruction(compute_budget_ix)
         .accounts(accounts)

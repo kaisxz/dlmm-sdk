@@ -48,5 +48,5 @@ pub async fn initialize_position_with_price_range<C: Deref<Target = impl Signer>
         nft_mint,
     };
 
-    initialize_position(params, program, transaction_config).await
+    initialize_position(params, program, transaction_config, None).await
 }

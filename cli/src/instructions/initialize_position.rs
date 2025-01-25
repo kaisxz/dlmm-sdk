@@ -1,6 +1,8 @@
 use std::ops::Deref;
 
 use anchor_client::solana_client::rpc_config::RpcSendTransactionConfig;
+use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
+use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_client::solana_sdk::signature::Keypair;
 use anchor_client::{solana_sdk::pubkey::Pubkey, solana_sdk::signer::Signer, Program};
 
@@ -25,6 +27,7 @@ pub async fn initialize_position<C: Deref<Target = impl Signer> + Clone>(
     params: InitPositionParameters,
     program: &Program<C>,
     transaction_config: RpcSendTransactionConfig,
+    compute_unit_price: Option<Instruction>,
 ) -> Result<Pubkey> {
     let InitPositionParameters {
         lb_pair,
@@ -62,8 +65,15 @@ pub async fn initialize_position<C: Deref<Target = impl Signer> + Clone>(
         width,
     };
 
-    let request_builder = program.request();
+    let mut request_builder = program.request();
+    let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
+
+    if let Some(compute_unit_price) = compute_unit_price {
+        request_builder = request_builder.instruction(compute_unit_price);
+    }
+
     let signature = request_builder
+        .instruction(compute_budget_ix)
         .accounts(accounts)
         .args(ix)
         .signer(&position_keypair)

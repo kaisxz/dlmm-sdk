@@ -80,13 +80,15 @@ pub async fn claim_fee<C: Deref<Target = impl Signer> + Clone>(
         event_authority,
         program: lb_clmm::ID,
     };
-
+    
     let ix = instruction::ClaimFee {};
+
     let mut builder = program
         .request()
         .accounts(accounts)
         .args(ix)
         .instruction(ComputeBudgetInstruction::set_compute_unit_limit(350_000));
+
     if let Some(compute_unit_price_ix) = compute_unit_price {
         builder = builder.instruction(compute_unit_price_ix);
     }

@@ -366,7 +366,7 @@ impl PositionV2 {
             if !liquidity_share.is_zero() {
                 return false;
             }
-            let reward_infos = &self.reward_infos[idx];
+            let reward_infos: &UserRewardInfo = &self.reward_infos[idx];
 
             for reward_pending in reward_infos.reward_pendings {
                 if !reward_pending.is_zero() {
