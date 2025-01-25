@@ -338,6 +338,28 @@ impl PositionV2 {
         self.last_updated_at = current_time;
     }
 
+    pub fn is_liquidity_empty(&self) -> bool {
+        for (idx, liquidity_share) in self.liquidity_shares.iter().enumerate() {
+            if !liquidity_share.is_zero() {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn is_fee_empty(&self) -> bool {
+        for (idx, liquidity_share) in self.liquidity_shares.iter().enumerate() {
+            let fee_infos = &self.fee_infos[idx];
+
+            if !fee_infos.fee_x_pending.is_zero() || !fee_infos.fee_y_pending.is_zero() {
+                return false;
+            }
+        }
+
+        true
+    }
+
     /// Position is empty when rewards is 0, fees is 0, and liquidity share is 0.
     pub fn is_empty(&self) -> bool {
         for (idx, liquidity_share) in self.liquidity_shares.iter().enumerate() {

@@ -1,4 +1,5 @@
 pub mod add_liquidity;
+pub mod add_liquidity_by_strategy;
 pub mod check_my_balance;
 pub mod claim_fee;
 pub mod claim_reward;
@@ -18,6 +19,7 @@ pub mod initialize_position_with_price_range;
 pub mod initialize_preset_parameter;
 pub mod initialize_reward;
 pub mod list_all_binstep;
+pub mod remove_all_liquidity;
 pub mod remove_liquidity;
 pub mod remove_liquidity_by_price_range;
 pub mod seed_liquidity;

@@ -95,8 +95,6 @@ pub async fn claim_fee<C: Deref<Target = impl Signer> + Clone>(
         .send_with_spinner_and_config(transaction_config)
         .await;
 
-    println!("Claim fee. Signature: {:#?}", signature);
-
     signature?;
 
     Ok(())

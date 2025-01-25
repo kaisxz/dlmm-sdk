@@ -15,7 +15,7 @@ use crate::math::{
     compute_base_factor_from_fee_bps, get_id_from_price, get_precise_id_from_price,
     price_per_token_to_per_lamport,
 };
-use crate::SelectiveRounding;
+use crate::args::SelectiveRounding;
 
 #[derive(Debug)]
 pub struct InitCustomizablePermissionlessLbPairParameters {

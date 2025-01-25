@@ -124,7 +124,7 @@ pub async fn check_my_balance<C: Deref<Target = impl Signer> + Clone>(
 }
 
 pub struct BinArrayManager<'a> {
-    bin_arrays: &'a Vec<BinArray>,
+    pub bin_arrays: &'a Vec<BinArray>,
 }
 impl<'a> BinArrayManager<'a> {
     pub fn get_bin(&self, bin_id: i32) -> anyhow::Result<&Bin> {
@@ -186,7 +186,7 @@ impl<'a> BinArrayManager<'a> {
         Ok((total_fee_x, total_fee_y))
     }
 
-    fn get_fee_pending_for_a_bin(
+    pub fn get_fee_pending_for_a_bin(
         position: &PositionV2,
         bin_id: i32,
         bin: &Bin,

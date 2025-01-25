@@ -11,6 +11,7 @@ authors = ["tian <tian@racoons.dev>"]
 commons = { workspace = true }
 anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
+log = { workspace = true }
 anchor-client = { workspace = true, features = ["async"] }
 clap = { workspace = true, features = ["derive"] }
 anyhow = { workspace = true }

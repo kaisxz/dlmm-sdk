@@ -44,8 +44,6 @@ pub async fn close_position<C: Deref<Target = impl Signer> + Clone>(
         .send_with_spinner_and_config(transaction_config)
         .await;
 
-    println!("Close position. Signature: {:#?}", signature);
-
     signature?;
 
     Ok(())
