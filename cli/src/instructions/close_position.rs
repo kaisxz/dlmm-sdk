@@ -36,7 +36,7 @@ pub async fn close_position<C: Deref<Target = impl Signer> + Clone>(
     };
 
     let ix = instruction::ClosePosition {};
-    //let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
+    let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
 
     let mut request_builder = program.request();
 
@@ -45,7 +45,7 @@ pub async fn close_position<C: Deref<Target = impl Signer> + Clone>(
     }
 
     let signature = request_builder
-        //.instruction(compute_budget_ix)
+        .instruction(compute_budget_ix)
         .accounts(accounts)
         .args(ix)
         .send_with_spinner_and_config(transaction_config)

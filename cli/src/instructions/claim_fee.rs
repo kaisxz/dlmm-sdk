@@ -22,43 +22,29 @@ pub async fn claim_fee<C: Deref<Target = impl Signer> + Clone>(
     let position_state: PositionV2 = program.account(position).await?;
     let lb_pair_state: LbPair = program.account(position_state.lb_pair).await?;
 
-    let (user_token_x, user_token_y) = if position_state.fee_owner == Pubkey::default() {
-        let user_token_x = get_or_create_ata(
-            program,
-            transaction_config,
-            lb_pair_state.token_x_mint,
-            position_state.owner,
-            compute_unit_price.clone(),
-        )
-        .await?;
-        let user_token_y = get_or_create_ata(
-            program,
-            transaction_config,
-            lb_pair_state.token_y_mint,
-            position_state.owner,
-            compute_unit_price.clone(),
-        )
-        .await?;
-        (user_token_x, user_token_y)
+    let position_owner = if position_state.fee_owner == Pubkey::default() {
+        position_state.owner
     } else {
-        let user_token_x = get_or_create_ata(
-            program,
-            transaction_config,
-            lb_pair_state.token_x_mint,
-            position_state.fee_owner,
-            compute_unit_price.clone(),
-        )
-        .await?;
-        let user_token_y = get_or_create_ata(
-            program,
-            transaction_config,
-            lb_pair_state.token_y_mint,
-            position_state.fee_owner,
-            compute_unit_price.clone(),
-        )
-        .await?;
-        (user_token_x, user_token_y)
+        position_state.fee_owner
     };
+
+    let user_token_x = get_or_create_ata(
+        program,
+        transaction_config,
+        lb_pair_state.token_x_mint,
+        position_owner,
+        compute_unit_price.clone(),
+    )
+    .await?;
+
+    let user_token_y = get_or_create_ata(
+        program,
+        transaction_config,
+        lb_pair_state.token_y_mint,
+        position_owner,
+        compute_unit_price.clone(),
+    )
+    .await?;
 
     let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_position(program, position).await?;
 

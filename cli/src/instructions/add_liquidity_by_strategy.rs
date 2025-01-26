@@ -112,7 +112,16 @@ pub async fn add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
 
     let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
 
-    let request_builder = program.request();
+    //TODO: Create Indempotent for WrappedSOL
+    // Check if token_x_mint is wrapped SOL
+    //TODO: Check both sides
+
+    let mut request_builder = program.request();
+
+    if compute_unit_price.is_some() {
+        request_builder = request_builder.instruction(compute_unit_price.unwrap());
+    }
+
     let signature = request_builder
         .instruction(compute_budget_ix)
         .accounts(accounts)

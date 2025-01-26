@@ -198,7 +198,7 @@ async fn main() -> Result<()> {
                 nft_mint,
                 width,
             };
-            initialize_position(params, &amm_program, transaction_config).await?;
+            initialize_position(params, &amm_program, transaction_config, None).await?;
         }
         Command::AddLiquidity {
             lb_pair,
@@ -305,7 +305,7 @@ async fn main() -> Result<()> {
             update_reward_funder(params, &amm_program, transaction_config).await?;
         }
         Command::ClosePosition { position } => {
-            close_position(position, &amm_program, transaction_config).await?;
+            close_position(position, &amm_program, transaction_config, None).await?;
         }
         Command::ClaimFee { position } => {
             claim_fee(
