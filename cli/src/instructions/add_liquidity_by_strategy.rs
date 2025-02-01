@@ -118,8 +118,8 @@ pub async fn add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
 
     let mut request_builder = program.request();
 
-    if compute_unit_price.is_some() {
-        request_builder = request_builder.instruction(compute_unit_price.unwrap());
+    if let Some(compute_unit_price) = compute_unit_price {
+        request_builder = request_builder.instruction(compute_unit_price);
     }
 
     let signature = request_builder

@@ -94,6 +94,7 @@ pub async fn check_my_balance<C: Deref<Target = impl Signer> + Clone>(
                     }
                     let bin_id = position_state.from_idx_to_bin_id(i)?;
                     let bin = bin_array_manager.get_bin(bin_id)?;
+                    //Important: This is the amount of tokens that the user has in the bin
                     let (amount_x, amount_y) = bin.calculate_out_amount(share)?;
                     total_amount_x = total_amount_x.safe_add(amount_x).unwrap();
                     total_amount_y = total_amount_y.safe_add(amount_y).unwrap();
