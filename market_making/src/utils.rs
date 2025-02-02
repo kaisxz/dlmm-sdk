@@ -6,6 +6,7 @@ use anchor_client::solana_sdk::commitment_config::CommitmentConfig;
 use anchor_client::solana_sdk::signature::Signature;
 use anchor_client::solana_sdk::signer::keypair::Keypair;
 use anchor_client::solana_sdk::transaction::Transaction;
+use anchor_client::AsSigner;
 use anchor_client::RequestBuilder;
 use anchor_client::{
     solana_sdk::{pubkey::Pubkey, signer::Signer},
@@ -54,7 +55,7 @@ pub async fn get_or_create_ata<C: Deref<Target = impl Signer> + Clone>(
     let user_ata = get_associated_token_address(&wallet_address, &token_mint);
 
     let rpc_client = program.rpc();
-    let user_ata_exists = rpc_client.get_account(&user_ata).is_ok();
+    let user_ata_exists = rpc_client.get_account(&user_ata).await.is_ok();
 
     match user_ata_exists {
         true => Ok(user_ata),
@@ -68,7 +69,7 @@ pub async fn get_or_create_ata<C: Deref<Target = impl Signer> + Clone>(
                     &spl_token::ID,
                 ));
 
-            let signature = send_tx(vec![payer], payer.pubkey(), program, &builder)?;
+            let signature = send_tx(vec![payer], payer.pubkey(), program, &builder).await?;
             println!("create ata {token_mint} {wallet_address} {signature}");
             Ok(user_ata)
         }
@@ -86,14 +87,14 @@ pub fn get_transaction_config() -> RpcSendTransactionConfig {
     }
 }
 
-pub fn send_tx<C: Clone + std::ops::Deref<Target = impl Signer>>(
+pub async fn send_tx<C: Clone + std::ops::Deref<Target = impl Signer>, S: AsSigner>(
     keypairs: Vec<&Keypair>,
     payer: Pubkey,
     program: &Program<C>,
-    builder: &RequestBuilder<C>,
+    builder: &RequestBuilder<'_, C, S>,
 ) -> Result<Signature> {
     let rpc_client = program.rpc();
-    let latest_blockhash = rpc_client.get_latest_blockhash()?;
+    let latest_blockhash = rpc_client.get_latest_blockhash().await?;
     let tx = Transaction::new_signed_with_payer(
         &builder.instructions()?,
         Some(&payer),
@@ -101,19 +102,19 @@ pub fn send_tx<C: Clone + std::ops::Deref<Target = impl Signer>>(
         latest_blockhash,
     );
 
-    let signature = rpc_client.send_and_confirm_transaction(&tx)?;
+    let signature = rpc_client.send_and_confirm_transaction(&tx).await?;
     Ok(signature)
 }
 
-pub fn simulate_transaction<C: Clone + std::ops::Deref<Target = impl Signer>>(
+pub async fn simulate_transaction<C: Clone + std::ops::Deref<Target = impl Signer>, S: AsSigner>(
     keypairs: Vec<&Keypair>,
     payer: Pubkey,
     program: &Program<C>,
-    builder: &RequestBuilder<C>,
+    builder: &RequestBuilder<'_, C, S>,
 ) -> Result<Response<RpcSimulateTransactionResult>> {
     let instructions = builder.instructions()?;
     let rpc_client = program.rpc();
-    let recent_blockhash = rpc_client.get_latest_blockhash()?;
+    let recent_blockhash = rpc_client.get_latest_blockhash().await?;
     let tx = Transaction::new_signed_with_payer(
         &instructions,
         Some(&payer),
@@ -121,11 +122,11 @@ pub fn simulate_transaction<C: Clone + std::ops::Deref<Target = impl Signer>>(
         recent_blockhash,
     );
 
-    let simulation = rpc_client.simulate_transaction(&tx)?;
+    let simulation = rpc_client.simulate_transaction(&tx).await?;
     Ok(simulation)
 }
 
-pub fn parse_swap_event<C: Clone + std::ops::Deref<Target = impl Signer>>(
+pub async fn parse_swap_event<C: Clone + std::ops::Deref<Target = impl Signer>>(
     program: &Program<C>,
     signature: Signature,
 ) -> Result<SwapEvent> {
@@ -136,7 +137,7 @@ pub fn parse_swap_event<C: Clone + std::ops::Deref<Target = impl Signer>>(
             commitment: Some(CommitmentConfig::finalized()),
             max_supported_transaction_version: Some(0),
         },
-    )?;
+    ).await?;
 
     if let Some(meta) = &tx.transaction.meta {
         if let OptionSerializer::Some(inner_instructions) = meta.inner_instructions.as_ref() {
@@ -168,7 +169,7 @@ pub fn parse_event_cpi<T: AnchorDeserialize + AnchorSerialize + Discriminator>(
     if &ix_data[..8] == EVENT_IX_TAG_LE {
         let event_cpi = &ix_data[8..];
         let event_discriminator = &event_cpi[..8];
-        if event_discriminator.eq(&T::discriminator()) {
+        if event_discriminator.eq(T::DISCRIMINATOR) {
             let event = T::try_from_slice(&event_cpi[8..]);
             return event.ok();
         }

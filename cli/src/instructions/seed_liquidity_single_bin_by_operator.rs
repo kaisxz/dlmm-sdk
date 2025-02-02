@@ -136,8 +136,9 @@ pub async fn seed_liquidity_single_bin_by_operator<C: Deref<Target = impl Signer
     let (bin_array_bitmap_extension, _bump) = derive_bin_array_bitmap_extension(lb_pair);
 
     if overflow_internal_bitmap_range {
-        let bitmap_extension_account = program.rpc().get_account(&bin_array_bitmap_extension);
-        if bitmap_extension_account.is_err() {
+        let rpc = program.rpc();
+        let bitmap_extension_account = rpc.get_account(&bin_array_bitmap_extension);
+        if bitmap_extension_account.await.is_err() {
             let initialize_bitmap_extension = Instruction {
                 program_id: lb_clmm::ID,
                 accounts: accounts::InitializeBinArrayBitmapExtension {
@@ -164,7 +165,7 @@ pub async fn seed_liquidity_single_bin_by_operator<C: Deref<Target = impl Signer
         (lower_bin_array, lower_bin_array_index),
         (upper_bin_array, upper_bin_array_index),
     ] {
-        if program.rpc().get_account(&lower_bin_array).is_err() {
+        if program.rpc().get_account(&lower_bin_array).await.is_err() {
             let initialize_bin_array_ix = Instruction {
                 program_id: lb_clmm::ID,
                 accounts: accounts::InitializeBinArray {
@@ -188,7 +189,7 @@ pub async fn seed_liquidity_single_bin_by_operator<C: Deref<Target = impl Signer
         get_associated_token_address(&program.payer(), &lb_pair_state.token_x_mint);
     let owner_token_x = get_associated_token_address(&position_owner, &lb_pair_state.token_x_mint);
 
-    match program.rpc().get_account(&owner_token_x) {
+    match program.rpc().get_account(&owner_token_x).await {
         std::result::Result::Ok(value) => {
             let bytes = value.data;
             let mut amount_bytes = [0u8; 8];
@@ -288,7 +289,7 @@ pub async fn seed_liquidity_single_bin_by_operator<C: Deref<Target = impl Signer
     instructions.push(deposit_ix);
 
     let mut builder = program.request();
-    builder = builder.signer(&position_base_kp);
+    builder = builder.signer(position_base_kp.insecure_clone());
     builder = instructions
         .into_iter()
         .fold(builder, |builder, ix| builder.instruction(ix));

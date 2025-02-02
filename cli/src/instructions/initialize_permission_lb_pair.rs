@@ -61,7 +61,7 @@ pub async fn initialize_permission_lb_pair<C: Deref<Target = impl Signer> + Clon
     let (lb_pair, _bump) =
         derive_permission_lb_pair_pda(base_keypair.pubkey(), token_mint_x, token_mint_y, bin_step);
 
-    if program.rpc().get_account_data(&lb_pair).is_ok() {
+    if program.rpc().get_account_data(&lb_pair).await.is_ok() {
         return Ok(lb_pair);
     }
 
@@ -105,7 +105,7 @@ pub async fn initialize_permission_lb_pair<C: Deref<Target = impl Signer> + Clon
     let request_builder = program.request();
     let signature = request_builder
         .accounts(accounts)
-        .signer(&base_keypair)
+        .signer(base_keypair.insecure_clone())
         .args(ix)
         .send_with_spinner_and_config(transaction_config)
         .await;

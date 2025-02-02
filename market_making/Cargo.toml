@@ -12,7 +12,7 @@ routerify = {workspace=true}
 ureq = { workspace=true, features = ["json"]}
 anchor-client={workspace=true, features=["async"]}
 anchor-spl={workspace=true}
-anchor-lang={workspace=true}
+anchor-lang={workspace=true, features = ["event-cpi"]}
 env_logger={workspace=true}
 log={workspace=true}
 clap = { workspace=true, features = ["derive"] }

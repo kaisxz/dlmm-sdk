@@ -71,7 +71,7 @@ pub async fn initialize_customizable_permissionless_lb_pair<
 
     let (lb_pair, _bump) = derive_customizable_permissionless_lb_pair(token_mint_x, token_mint_y);
 
-    if program.rpc().get_account_data(&lb_pair).is_ok() {
+    if program.rpc().get_account_data(&lb_pair).await.is_ok() {
         return Ok(lb_pair);
     }
 
@@ -86,8 +86,7 @@ pub async fn initialize_customizable_permissionless_lb_pair<
         token_mint_x,
         program.payer(),
         compute_unit_price.clone(),
-    )
-    .await?;
+    ).await?;
 
     let accounts = accounts::InitializeCustomizablePermissionlessLbPair {
         lb_pair,

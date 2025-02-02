@@ -44,7 +44,7 @@ pub async fn add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
         strategy_parameters,
     } = params;
 
-    let lb_pair_state: LbPair = program.account(lb_pair).await?;
+    /*let lb_pair_state: LbPair = program.account(lb_pair).await?;
 
     let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_position(program, position).await?;
 
@@ -120,14 +120,15 @@ pub async fn add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
 
     if let Some(compute_unit_price) = compute_unit_price {
         request_builder = request_builder.instruction(compute_unit_price);
-    }
+    }*/
 
-    let signature = request_builder
+    /*let signature = request_builder
         .instruction(compute_budget_ix)
         .accounts(accounts)
         .args(ix)
         .send_with_spinner_and_config(transaction_config)
-        .await;
+        .await;*/
 
-    signature.map_err(Into::into)
+    //signature.map_err(Into::into);
+    Ok(Signature::default())
 }

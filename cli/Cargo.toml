@@ -9,7 +9,7 @@ authors = ["tian <tian@racoons.dev>"]
 
 [dependencies]
 commons = { workspace = true }
-anchor-lang = { workspace = true }
+anchor-lang = { workspace = true, features = ["event-cpi"] }
 anchor-spl = { workspace = true }
 log = { workspace = true }
 anchor-client = { workspace = true, features = ["async"] }

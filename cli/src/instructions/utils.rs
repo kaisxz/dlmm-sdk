@@ -23,7 +23,7 @@ pub async fn get_or_create_ata<C: Deref<Target = impl Signer> + Clone>(
     let user_ata = get_associated_token_address(&wallet_address, &token_mint);
 
     let rpc_client = program.rpc();
-    let user_ata_exists = rpc_client.get_account(&user_ata).is_ok();
+    let user_ata_exists = rpc_client.get_account(&user_ata).await.is_ok();
 
     match user_ata_exists {
         true => Ok(user_ata),

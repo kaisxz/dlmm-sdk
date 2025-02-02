@@ -121,7 +121,7 @@ async fn main() {
 
     // init some state
     core.refresh_state().await.unwrap();
-    core.fetch_token_info().unwrap();
+    core.fetch_token_info().await.unwrap();
     let core = Arc::new(core);
     let mut handles = vec![];
     {

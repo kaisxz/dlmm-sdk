@@ -119,7 +119,7 @@ async fn get_or_create_position<C: Deref<Target = impl Signer> + Clone>(
 
     let (position, _bump) = derive_position_pda(lb_pair, base, lower_bin_id, width);
 
-    if program.rpc().get_account_data(&position).is_err() {
+    if program.rpc().get_account_data(&position).await.is_err() {
         let ix = Instruction {
             program_id: lb_clmm::ID,
             accounts: accounts::InitializePositionPda {
@@ -146,7 +146,7 @@ async fn get_or_create_position<C: Deref<Target = impl Signer> + Clone>(
             builder = builder.instruction(compute_unit_price_ix);
         }
 
-        builder = builder.instruction(ix).signer(base_keypair).signer(owner);
+        builder = builder.instruction(ix).signer(base_keypair.insecure_clone()).signer(owner.insecure_clone());
         let signature = builder
             .send_with_spinner_and_config(transaction_config)
             .await;
@@ -255,7 +255,7 @@ pub async fn create_position_bin_array_if_not_exists<C: Deref<Target = impl Sign
         // Initialize bin array if not exists
         let (bin_array, _bump) = derive_bin_array_pda(lb_pair, idx.into());
 
-        if program.rpc().get_account_data(&bin_array).is_err() {
+        if program.rpc().get_account_data(&bin_array).await.is_err() {
             let accounts = accounts::InitializeBinArray {
                 bin_array,
                 funder: program.payer(),

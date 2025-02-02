@@ -61,6 +61,7 @@ pub async fn remove_liquidity<C: Deref<Target = impl Signer> + Clone>(
     let bin_array_bitmap_extension = if program
         .rpc()
         .get_account(&bin_array_bitmap_extension)
+        .await
         .is_err()
     {
         None

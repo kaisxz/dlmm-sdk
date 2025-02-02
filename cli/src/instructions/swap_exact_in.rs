@@ -70,7 +70,7 @@ pub async fn swap<C: Deref<Target = impl Signer> + Clone>(
     )?;
 
     let bin_arrays = program
-        .async_rpc()
+        .rpc()
         .get_multiple_accounts(&bin_arrays_for_swap)
         .await?
         .into_iter()
@@ -86,7 +86,7 @@ pub async fn swap<C: Deref<Target = impl Signer> + Clone>(
         .context("Failed to fetch bin arrays")?;
 
     let clock = program
-        .async_rpc()
+        .rpc()
         .get_account(&Clock::id())
         .await
         .map(|account| {

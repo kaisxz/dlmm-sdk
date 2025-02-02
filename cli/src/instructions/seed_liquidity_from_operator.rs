@@ -47,14 +47,14 @@ async fn get_or_create_position<C: Deref<Target = impl Signer> + Clone>(
 
     let lb_pair_state: LbPair = program.account(lb_pair).await?;
 
-    if program.rpc().get_account_data(&position).is_err() {
+    if program.rpc().get_account_data(&position).await.is_err() {
         let mut builder = program.request();
 
         let operator_token_x =
             get_associated_token_address(&program.payer(), &lb_pair_state.token_x_mint);
         let owner_token_x = get_associated_token_address(&owner, &lb_pair_state.token_x_mint);
 
-        match program.rpc().get_account(&owner_token_x) {
+        match program.rpc().get_account(&owner_token_x).await {
             std::result::Result::Ok(value) => {
                 let bytes = value.data;
                 let mut amount_bytes = [0u8; 8];
@@ -119,7 +119,7 @@ async fn get_or_create_position<C: Deref<Target = impl Signer> + Clone>(
             builder = builder.instruction(compute_unit_price_ix);
         }
 
-        builder = builder.instruction(ix).signer(base_keypair);
+        builder = builder.instruction(ix).signer(base_keypair.insecure_clone());
         let signature = builder
             .send_with_spinner_and_config(transaction_config)
             .await;

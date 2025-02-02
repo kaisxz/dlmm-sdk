@@ -25,7 +25,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
     transaction_config: RpcSendTransactionConfig,
     compute_unit_price: Option<Instruction>,
 ) -> Result<()> {
-    let RemoveAllLiquidityParameters { lb_pair, position } = params;
+    /*let RemoveAllLiquidityParameters { lb_pair, position } = params;
 
     let lb_pair_state: LbPair = program.account(lb_pair).await?;
 
@@ -99,7 +99,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
         .send_with_spinner_and_config(transaction_config)
         .await;
 
-    signature?;
+    signature?;*/
 
     Ok(())
 }

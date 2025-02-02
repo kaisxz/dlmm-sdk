@@ -127,7 +127,7 @@ impl Core {
         Ok(())
     }
 
-    pub fn fetch_token_info(&self) -> Result<()> {
+    pub async fn fetch_token_info(&self) -> Result<()> {
         let token_mints = self.get_all_token_mints();
         let program: Program<Arc<Keypair>> = create_program(
             self.provider.to_string(),
@@ -135,7 +135,7 @@ impl Core {
             lb_clmm::ID,
             Arc::new(Keypair::new()),
         )?;
-        let accounts = program.rpc().get_multiple_accounts(&token_mints)?;
+        let accounts = program.rpc().get_multiple_accounts(&token_mints).await?;
 
         let mut tokens = HashMap::new();
         for (i, &token_pk) in token_mints.iter().enumerate() {
@@ -285,10 +285,10 @@ impl Core {
 
             if is_simulation {
                 let response =
-                    simulate_transaction(vec![&payer], payer.pubkey(), &program, &builder)?;
+                    simulate_transaction(vec![&payer], payer.pubkey(), &program, &builder).await?;
                 println!("{:?}", response);
             } else {
-                let signature = send_tx(vec![&payer], payer.pubkey(), &program, &builder)?;
+                let signature = send_tx(vec![&payer], payer.pubkey(), &program, &builder).await?;
                 info!("close popsition {position} {signature}");
             }
         }
@@ -339,6 +339,7 @@ impl Core {
         let bin_array_bitmap_extension = if program
             .rpc()
             .get_account(&bin_array_bitmap_extension)
+            .await
             .is_err()
         {
             None
@@ -400,7 +401,7 @@ impl Core {
             .args(ix);
 
         if is_simulation {
-            let response = simulate_transaction(vec![&payer], payer.pubkey(), &program, &builder)?;
+            let response = simulate_transaction(vec![&payer], payer.pubkey(), &program, &builder).await?;
             println!("{:?}", response);
             return Ok(SwapEvent {
                 lb_pair: Pubkey::default(),
@@ -417,11 +418,11 @@ impl Core {
             });
         }
 
-        let signature = send_tx(vec![&payer], payer.pubkey(), &program, &builder)?;
+        let signature = send_tx(vec![&payer], payer.pubkey(), &program, &builder).await?;
         info!("swap {amount_in} {swap_for_y} {signature}");
 
         // TODO should handle if cannot get swap eevent
-        let swap_event = parse_swap_event(&program, signature)?;
+        let swap_event = parse_swap_event(&program, signature).await?;
 
         Ok(swap_event)
     }
@@ -459,7 +460,7 @@ impl Core {
             // Initialize bin array if not exists
             let (bin_array, _bump) = derive_bin_array_pda(lb_pair, idx.into());
 
-            if program.rpc().get_account_data(&bin_array).is_err() {
+            if program.rpc().get_account_data(&bin_array).await.is_err() {
                 instructions.push(Instruction {
                     program_id: lb_clmm::ID,
                     accounts: accounts::InitializeBinArray {
@@ -504,6 +505,7 @@ impl Core {
         let bin_array_bitmap_extension = if program
             .rpc()
             .get_account(&bin_array_bitmap_extension)
+            .await
             .is_err()
         {
             None
@@ -566,7 +568,7 @@ impl Core {
                 payer.pubkey(),
                 &program,
                 &builder,
-            )
+            ).await
             .map_err(|_| Error::msg("Cannot simulate tx"))?;
             info!("deposit {amount_x} {amount_y} {position} {:?}", simulate_tx);
         } else {
@@ -575,7 +577,7 @@ impl Core {
                 payer.pubkey(),
                 &program,
                 &builder,
-            )?;
+            ).await?;
             info!("deposit {amount_x} {amount_y} {position} {signature}");
         }
 

@@ -76,7 +76,7 @@ pub async fn initialize_position<C: Deref<Target = impl Signer> + Clone>(
         .instruction(compute_budget_ix)
         .accounts(accounts)
         .args(ix)
-        .signer(&position_keypair)
+        .signer(position_keypair.insecure_clone())
         .send_with_spinner_and_config(transaction_config)
         .await;
 
