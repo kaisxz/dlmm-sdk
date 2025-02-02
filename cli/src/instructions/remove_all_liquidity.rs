@@ -4,6 +4,7 @@ use anchor_client::solana_client::rpc_config::RpcSendTransactionConfig;
 
 use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use anchor_client::solana_sdk::instruction::Instruction;
+use anchor_client::ThreadSafeSigner;
 use anchor_client::{solana_sdk::pubkey::Pubkey, solana_sdk::signer::Signer, Program};
 
 use anyhow::*;
@@ -25,7 +26,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
     transaction_config: RpcSendTransactionConfig,
     compute_unit_price: Option<Instruction>,
 ) -> Result<()> {
-    /*let RemoveAllLiquidityParameters { lb_pair, position } = params;
+    let RemoveAllLiquidityParameters { lb_pair, position } = params;
 
     let lb_pair_state: LbPair = program.account(lb_pair).await?;
 
@@ -54,6 +55,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
     let bin_array_bitmap_extension = if program
         .rpc()
         .get_account(&bin_array_bitmap_extension)
+        .await
         .is_err()
     {
         None
@@ -99,7 +101,7 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
         .send_with_spinner_and_config(transaction_config)
         .await;
 
-    signature?;*/
+    signature?;
 
     Ok(())
 }

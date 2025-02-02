@@ -641,7 +641,7 @@ pub async fn seed_liquidity<C: Deref<Target = impl Signer> + Clone>(
                     derive_position_pda(lb_pair, position_base_kp.pubkey(), lower_bin_id, width);
 
                 let position_state = program.account::<PositionV2>(position).await?;
-                let position_liquidity_shares = position_state.liquidity_shares.to_vec();
+                let position_liquidity_shares = position_state.liquidity_shares.iter().map(|share| share.as_u128()).collect::<Vec<u128>>();
                 dust_deposit_state
                     .position_shares
                     .insert(position, position_liquidity_shares);
@@ -685,7 +685,7 @@ pub async fn seed_liquidity<C: Deref<Target = impl Signer> + Clone>(
             let mut dust_deposited = false;
             for (i, share) in position_state.liquidity_shares.iter().enumerate() {
                 let snapshot_share = position_share_snapshot[i];
-                if snapshot_share != *share {
+                if snapshot_share != share.as_u128() {
                     dust_deposited = true;
                     break;
                 }

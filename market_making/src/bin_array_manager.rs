@@ -80,12 +80,14 @@ impl<'a> BinArrayManager<'a> {
 
         let new_fee_x: u64 = safe_mul_shr_cast(
             position.liquidity_shares[idx]
+                .as_u128()
                 .safe_shr(SCALE_OFFSET.into())
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?
                 .try_into()
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?,
             fee_x_per_token_stored
-                .safe_sub(fee_infos.fee_x_per_token_complete)
+                .as_u128()
+                .safe_sub(fee_infos.fee_x_per_token_complete.as_u128())
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?,
             SCALE_OFFSET,
             Rounding::Down,
@@ -98,12 +100,14 @@ impl<'a> BinArrayManager<'a> {
         let fee_y_per_token_stored = bin.fee_amount_y_per_token_stored;
         let new_fee_y: u64 = safe_mul_shr_cast(
             position.liquidity_shares[idx]
+                .as_u128()
                 .safe_shr(SCALE_OFFSET.into())
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?
                 .try_into()
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?,
             fee_y_per_token_stored
-                .safe_sub(fee_infos.fee_y_per_token_complete)
+                .as_u128()
+                .safe_sub(fee_infos.fee_y_per_token_complete.as_u128())
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?,
             SCALE_OFFSET,
             Rounding::Down,

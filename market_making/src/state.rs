@@ -98,6 +98,7 @@ impl SinglePosition {
             };
 
             for (i, &share) in position.liquidity_shares.iter().enumerate() {
+                let share = share.as_u128();
                 if share == 0 {
                     continue;
                 }

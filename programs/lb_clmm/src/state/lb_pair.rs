@@ -19,6 +19,8 @@ use ruint::aliases::{U1024, U256};
 use std::ops::BitXor;
 use std::ops::Shl;
 use std::ops::Shr;
+use super::u128::u128;
+use core::primitive::u128 as u128_primitive;
 
 /// Type of the Pair. 0 = Permissionless, 1 = Permission, 2 = CustomizablePermissionless
 #[derive(Copy, Clone, Debug, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
@@ -215,12 +217,12 @@ impl RewardInfo {
         &self,
         current_time: u64,
         liquidity_supply: u64,
-    ) -> Result<u128> {
+    ) -> Result<u128_primitive> {
         let time_period = self.get_seconds_elapsed_since_last_update(current_time)?;
 
         safe_mul_div_cast(
             time_period.into(),
-            self.reward_rate,
+            self.reward_rate.as_u128(),
             liquidity_supply.into(),
             Rounding::Down,
         )
@@ -235,7 +237,7 @@ impl RewardInfo {
         let time_period =
             U256::from(last_time_reward_applicable.safe_sub(self.last_update_time.into())?);
 
-        Ok(time_period.safe_mul(U256::from(self.reward_rate))?)
+        Ok(time_period.safe_mul(U256::from(self.reward_rate.as_u128()))?)
     }
 
     /// Farming rate after funding
@@ -252,7 +254,7 @@ impl RewardInfo {
         } else {
             let remaining_seconds = reward_duration_end.safe_sub(current_time)?;
             let leftover: u64 = safe_mul_shr_cast(
-                self.reward_rate,
+                self.reward_rate.as_u128(),
                 remaining_seconds.into(),
                 SCALE_OFFSET,
                 Rounding::Down,
@@ -261,12 +263,12 @@ impl RewardInfo {
             total_amount = leftover.safe_add(funding_amount)?;
         }
 
-        self.reward_rate = safe_shl_div_cast(
+        self.reward_rate.set(safe_shl_div_cast(
             total_amount.into(),
             self.reward_duration.into(),
             SCALE_OFFSET,
             Rounding::Down,
-        )?;
+        )?);
         self.last_update_time = current_time;
         self.reward_duration_end = current_time.safe_add(self.reward_duration)?;
 
@@ -441,19 +443,19 @@ impl LbPair {
     }
 
     /// Base fee rate = Base fee factor * bin step. This is in 1e9 unit.
-    pub fn get_base_fee(&self) -> Result<u128> {
-        Ok(u128::from(self.parameters.base_factor)
+    pub fn get_base_fee(&self) -> Result<u128_primitive> {
+        Ok(u128_primitive::from(self.parameters.base_factor)
             .safe_mul(self.bin_step.into())?
             // Make it to be the same as FEE_PRECISION defined for ceil_div later on.
             .safe_mul(10u128)?)
     }
 
     /// Variable fee rate = variable fee factor * (volatility_accumulator * bin_step)^2
-    pub fn compute_variable_fee(&self, volatility_accumulator: u32) -> Result<u128> {
+    pub fn compute_variable_fee(&self, volatility_accumulator: u32) -> Result<u128_primitive> {
         if self.parameters.variable_fee_control > 0 {
-            let volatility_accumulator: u128 = volatility_accumulator.into();
-            let bin_step: u128 = self.bin_step.into();
-            let variable_fee_control: u128 = self.parameters.variable_fee_control.into();
+            let volatility_accumulator: u128_primitive = volatility_accumulator.into();
+            let bin_step: u128_primitive = self.bin_step.into();
+            let variable_fee_control: u128_primitive = self.parameters.variable_fee_control.into();
 
             let square_vfa_bin = volatility_accumulator
                 .safe_mul(bin_step)?
@@ -472,12 +474,12 @@ impl LbPair {
     }
 
     /// Variable fee rate = variable_fee_control * (variable_fee_accumulator * bin_step) ^ 2
-    pub fn get_variable_fee(&self) -> Result<u128> {
+    pub fn get_variable_fee(&self) -> Result<u128_primitive> {
         self.compute_variable_fee(self.v_parameters.volatility_accumulator)
     }
 
     /// Total fee rate = base_fee_rate + variable_fee_rate
-    pub fn get_total_fee(&self) -> Result<u128> {
+    pub fn get_total_fee(&self) -> Result<u128_primitive> {
         let total_fee_rate = self.get_base_fee()?.safe_add(self.get_variable_fee()?)?;
         let total_fee_rate_cap = std::cmp::min(total_fee_rate, MAX_FEE_RATE.into());
         Ok(total_fee_rate_cap)
@@ -485,7 +487,7 @@ impl LbPair {
 
     #[cfg(test)]
     /// Maximum fee rate
-    fn get_max_total_fee(&self) -> Result<u128> {
+    fn get_max_total_fee(&self) -> Result<u128_primitive> {
         let max_total_fee_rate = self
             .get_base_fee()?
             .safe_add(self.compute_variable_fee(self.parameters.max_volatility_accumulator)?)?;
@@ -498,11 +500,11 @@ impl LbPair {
     pub fn compute_composition_fee(&self, swap_amount: u64) -> Result<u64> {
         let total_fee_rate = self.get_total_fee()?;
         // total_fee_rate 1e9 unit
-        let fee_amount = u128::from(swap_amount).safe_mul(total_fee_rate)?;
+        let fee_amount = u128_primitive::from(swap_amount).safe_mul(total_fee_rate)?;
         let composition_fee =
-            fee_amount.safe_mul(u128::from(FEE_PRECISION).safe_add(total_fee_rate)?)?;
+            fee_amount.safe_mul(u128_primitive::from(FEE_PRECISION).safe_add(total_fee_rate)?)?;
         // 1e9 unit * 1e9 unit = 1e18, scale back
-        let scaled_down_fee = composition_fee.safe_div(u128::from(FEE_PRECISION).pow(2))?;
+        let scaled_down_fee = composition_fee.safe_div(u128_primitive::from(FEE_PRECISION).pow(2))?;
 
         Ok(scaled_down_fee
             .try_into()
@@ -514,7 +516,7 @@ impl LbPair {
         // total_fee_rate 1e9 unit
         let total_fee_rate = self.get_total_fee()?;
         // Ceil division
-        let fee_amount = u128::from(amount_with_fees)
+        let fee_amount = u128_primitive::from(amount_with_fees)
             .safe_mul(total_fee_rate)?
             .safe_add((FEE_PRECISION - 1).into())?;
         let scaled_down_fee = fee_amount.safe_div(FEE_PRECISION.into())?;
@@ -530,10 +532,10 @@ impl LbPair {
     /// The result is ceil-ed.
     pub fn compute_fee(&self, amount: u64) -> Result<u64> {
         let total_fee_rate = self.get_total_fee()?;
-        let denominator = u128::from(FEE_PRECISION).safe_sub(total_fee_rate)?;
+        let denominator = u128_primitive::from(FEE_PRECISION).safe_sub(total_fee_rate)?;
 
         // Ceil division
-        let fee = u128::from(amount)
+        let fee = u128_primitive::from(amount)
             .safe_mul(total_fee_rate)?
             .safe_add(denominator)?
             .safe_sub(1)?;
@@ -547,9 +549,9 @@ impl LbPair {
 
     /// Compute protocol fee
     pub fn compute_protocol_fee(&self, fee_amount: u64) -> Result<u64> {
-        let protocol_fee = u128::from(fee_amount)
+        let protocol_fee = u128_primitive::from(fee_amount)
             .safe_mul(self.parameters.protocol_share.into())?
-            .safe_div(BASIS_POINT_MAX as u128)?;
+            .safe_div(BASIS_POINT_MAX as u128_primitive)?;
 
         Ok(protocol_fee
             .try_into()

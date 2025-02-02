@@ -15,12 +15,15 @@ use crate::{
 use anchor_lang::prelude::*;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_integer::Integer;
+use core::primitive::u128 as u128_primitive;
+use crate::state::u128::u128;
+
 /// Calculate out token amount based on liquidity share and supply
 #[inline]
 pub fn get_out_amount(
-    liquidity_share: u128,
+    liquidity_share: u128_primitive,
     bin_token_amount: u64,
-    liquidity_supply: u128,
+    liquidity_supply: u128_primitive,
 ) -> Result<u64> {
     if liquidity_supply == 0 {
         return Ok(0);
@@ -38,10 +41,10 @@ pub fn get_out_amount(
 /// Calculate liquidity share upon deposit
 #[inline]
 pub fn get_liquidity_share(
-    in_liquidity: u128,
-    bin_liquidity: u128,
-    liquidity_supply: u128,
-) -> Result<u128> {
+    in_liquidity: u128_primitive,
+    bin_liquidity: u128_primitive,
+    liquidity_supply: u128_primitive,
+) -> Result<u128_primitive> {
     safe_mul_div_cast(
         in_liquidity.into(),
         liquidity_supply.into(),
@@ -91,13 +94,13 @@ pub struct Bin {
 
 impl Bin {
     pub fn is_zero_liquidity(&self) -> bool {
-        self.liquidity_supply == 0
+        self.liquidity_supply.as_u128() == 0
     }
     /// Deposit to the bin.
-    pub fn deposit(&mut self, amount_x: u64, amount_y: u64, liquidity_share: u128) -> Result<()> {
+    pub fn deposit(&mut self, amount_x: u64, amount_y: u64, liquidity_share: u128_primitive) -> Result<()> {
         self.amount_x = self.amount_x.safe_add(amount_x)?;
         self.amount_y = self.amount_y.safe_add(amount_y)?;
-        self.liquidity_supply = self.liquidity_supply.safe_add(liquidity_share)?;
+        self.liquidity_supply.set(self.liquidity_supply.as_u128().safe_add(liquidity_share)?);
 
         Ok(())
     }
@@ -111,19 +114,20 @@ impl Bin {
     }
 
     /// Get or compute and save bin price if not exists
-    pub fn get_or_store_bin_price(&mut self, id: i32, bin_step: u16) -> Result<u128> {
-        if self.price == 0 {
-            self.price = get_price_from_id(id, bin_step)?;
+    pub fn get_or_store_bin_price(&mut self, id: i32, bin_step: u16) -> Result<u128_primitive> {
+        if self.price.as_u128() == 0 {
+            self.price.set(get_price_from_id(id, bin_step)?);
         }
 
-        Ok(self.price)
+        Ok(self.price.as_u128())
     }
 
     /// Update fee per liquidity stored. Used for claiming swap fee later.
     pub fn update_fee_per_token_stored(&mut self, fee: u64, swap_for_y: bool) -> Result<()> {
-        let fee_per_token_stored: u128 = safe_shl_div_cast(
+        let fee_per_token_stored: u128_primitive = safe_shl_div_cast(
             fee.into(),
             self.liquidity_supply
+                .as_u128()
                 .safe_shr(SCALE_OFFSET.into())?
                 .try_into()
                 .map_err(|_| LBError::TypeCastFailed)?,
@@ -134,13 +138,15 @@ impl Bin {
         // Fee was charged at swap-in side
         if swap_for_y {
             // Change to wrapping add later
-            self.fee_amount_x_per_token_stored = self
+            self.fee_amount_x_per_token_stored.set(self
                 .fee_amount_x_per_token_stored
-                .safe_add(fee_per_token_stored)?;
+                .as_u128()
+                .safe_add(fee_per_token_stored)?);
         } else {
-            self.fee_amount_y_per_token_stored = self
+            self.fee_amount_y_per_token_stored.set(self
                 .fee_amount_y_per_token_stored
-                .safe_add(fee_per_token_stored)?;
+                .as_u128()
+                .safe_add(fee_per_token_stored)?);
         }
         Ok(())
     }
@@ -149,7 +155,7 @@ impl Bin {
     pub fn swap(
         &mut self,
         amount_in: u64,
-        price: u128,
+        price: u128_primitive,
         swap_for_y: bool,
         lb_pair: &LbPair,
         host_fee_bps: Option<u16>,
@@ -220,7 +226,7 @@ impl Bin {
     pub fn swap_exact_out(
         &mut self,
         amount_in: u64,
-        price: u128,
+        price: u128_primitive,
         swap_for_y: bool,
         lb_pair: &LbPair,
         host_fee_bps: Option<u16>,
@@ -251,24 +257,24 @@ impl Bin {
     }
 
     /// Withdraw token X, and Y from the bin based on liquidity share.
-    pub fn withdraw(&mut self, liquidity_share: u128) -> Result<(u64, u64)> {
+    pub fn withdraw(&mut self, liquidity_share: u128_primitive) -> Result<(u64, u64)> {
         let (out_amount_x, out_amount_y) = self.calculate_out_amount(liquidity_share)?;
 
         self.amount_x = self.amount_x.safe_sub(out_amount_x)?;
         self.amount_y = self.amount_y.safe_sub(out_amount_y)?;
 
-        self.liquidity_supply = self.liquidity_supply.safe_sub(liquidity_share)?;
+        self.liquidity_supply.set(self.liquidity_supply.as_u128().safe_sub(liquidity_share)?);
 
         Ok((out_amount_x, out_amount_y))
     }
 
     /// Calcualte out amount based on liquidity share
-    pub fn calculate_out_amount(&self, liquidity_share: u128) -> Result<(u64, u64)> {
+    pub fn calculate_out_amount(&self, liquidity_share: u128_primitive) -> Result<(u64, u64)> {
         // Math::round_down(liquidity_share_to_withdraw * amount_x / bin_liquidity_supply)
         let out_amount_x = safe_mul_div_cast(
             liquidity_share,
             self.amount_x.into(),
-            self.liquidity_supply,
+            self.liquidity_supply.as_u128(),
             Rounding::Down,
         )?;
 
@@ -276,7 +282,7 @@ impl Bin {
         let out_amount_y = safe_mul_div_cast(
             liquidity_share,
             self.amount_y.into(),
-            self.liquidity_supply,
+            self.liquidity_supply.as_u128(),
             Rounding::Down,
         )?;
         Ok((out_amount_x, out_amount_y))
@@ -300,7 +306,7 @@ impl Bin {
         }
     }
 
-    pub fn get_amount_in(amount_out: u64, price: u128, swap_for_y: bool) -> Result<u64> {
+    pub fn get_amount_in(amount_out: u64, price: u128_primitive, swap_for_y: bool) -> Result<u64> {
         if swap_for_y {
             // (amount_y << SCALE_OFFSET) / price
             // Convert amount_y into Q64x0, if not the result will always in 0 as price is in Q64x64
@@ -318,7 +324,7 @@ impl Bin {
     /// Get out token amount from the bin based in amount in. The result is floor-ed.
     /// X -> Y: inX * bin_price
     /// Y -> X: inY / bin_price
-    pub fn get_amount_out(amount_in: u64, price: u128, swap_for_y: bool) -> Result<u64> {
+    pub fn get_amount_out(amount_in: u64, price: u128_primitive, swap_for_y: bool) -> Result<u64> {
         if swap_for_y {
             // (Q64x64(price) * Q64x0(amount_in)) >> SCALE_OFFSET
             // price * amount_in = amount_out_token_y (Q64x64)
@@ -336,7 +342,7 @@ impl Bin {
     /// Get maximum token amount needed to deposit into bin, in order to withdraw out all the opposite token from the bin. The result is ceil-ed.
     /// X -> Y: reserve_y / bin_price
     /// Y -> X: reserve_x * bin_price
-    pub fn get_max_amount_in(&self, price: u128, swap_for_y: bool) -> Result<u64> {
+    pub fn get_max_amount_in(&self, price: u128_primitive, swap_for_y: bool) -> Result<u64> {
         if swap_for_y {
             // (amount_y << SCALE_OFFSET) / price
             // Convert amount_y into Q64x0, if not the result will always in 0 as price is in Q64x64
@@ -351,7 +357,7 @@ impl Bin {
         }
     }
 
-    pub fn get_max_amounts_in(&self, price: u128) -> Result<(u64, u64)> {
+    pub fn get_max_amounts_in(&self, price: u128_primitive) -> Result<(u64, u64)> {
         let max_amount_in_x = self.get_max_amount_in(price, true)?;
         let max_amount_in_y = self.get_max_amount_in(price, false)?;
 
@@ -360,8 +366,8 @@ impl Bin {
 
     /// Accumulate amount X and Y swap into the bin for analytic purpose.
     pub fn accumulate_amounts_in(&mut self, amount_x_in: u64, amount_y_in: u64) {
-        self.amount_x_in = self.amount_x_in.wrapping_add(amount_x_in.into());
-        self.amount_y_in = self.amount_y_in.wrapping_add(amount_y_in.into());
+        self.amount_x_in.set(self.amount_x_in.as_u128().wrapping_add(amount_x_in.into()));
+        self.amount_y_in.set(self.amount_y_in.as_u128().wrapping_add(amount_y_in.into()));
     }
 }
 
@@ -418,7 +424,7 @@ impl BinArray {
         if version == LayoutVersion::V0 {
             self.version = LayoutVersion::V1.into();
             for bin in self.bins.iter_mut() {
-                bin.liquidity_supply = bin.liquidity_supply.safe_shl(SCALE_OFFSET.into())?;
+                bin.liquidity_supply.set(bin.liquidity_supply.as_u128().safe_shl(SCALE_OFFSET.into())?);
             }
         }
         Ok(())
@@ -511,19 +517,21 @@ impl BinArray {
             let reward_info = &mut lb_pair.reward_infos[reward_idx];
 
             if reward_info.initialized() {
-                if bin.liquidity_supply > 0 {
+                if bin.liquidity_supply.as_u128() > 0 {
                     let reward_per_token_stored_delta = reward_info
                         .calculate_reward_per_token_stored_since_last_update(
                             current_time,
                             bin.liquidity_supply
+                                .as_u128()
                                 .safe_shr(SCALE_OFFSET.into())?
                                 .try_into()
                                 .map_err(|_| LBError::TypeCastFailed)?,
                         )?;
 
-                    bin.reward_per_token_stored[reward_idx] = bin.reward_per_token_stored
+                    bin.reward_per_token_stored[reward_idx].set(bin.reward_per_token_stored
                         [reward_idx]
-                        .safe_add(reward_per_token_stored_delta)?;
+                        .as_u128()
+                        .safe_add(reward_per_token_stored_delta)?);
                 } else {
                     // Time period which the reward was distributed to empty bin
                     let time_period =

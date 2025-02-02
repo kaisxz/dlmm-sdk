@@ -89,6 +89,7 @@ pub async fn check_my_balance<C: Deref<Target = impl Signer> + Clone>(
                     bin_arrays: &bin_arrays,
                 };
                 for (i, &share) in position_state.liquidity_shares.iter().enumerate() {
+                    let share = share.as_u128();
                     if share == 0 {
                         continue;
                     }
@@ -199,9 +200,10 @@ impl<'a> BinArrayManager<'a> {
         let fee_x_per_token_stored = bin.fee_amount_x_per_token_stored;
 
         let new_fee_x: u64 = safe_mul_shr_cast(
-            position.liquidity_shares[idx],
+            position.liquidity_shares[idx].as_u128(),
             fee_x_per_token_stored
-                .safe_sub(fee_infos.fee_x_per_token_complete)
+                .as_u128()
+                .safe_sub(fee_infos.fee_x_per_token_complete.as_u128())
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?,
             SCALE_OFFSET,
             Rounding::Down,
@@ -213,9 +215,10 @@ impl<'a> BinArrayManager<'a> {
 
         let fee_y_per_token_stored = bin.fee_amount_y_per_token_stored;
         let new_fee_y: u64 = safe_mul_shr_cast(
-            position.liquidity_shares[idx],
+            position.liquidity_shares[idx].as_u128(),
             fee_y_per_token_stored
-                .safe_sub(fee_infos.fee_y_per_token_complete)
+                .as_u128()
+                .safe_sub(fee_infos.fee_y_per_token_complete.as_u128())
                 .map_err(|_| anyhow::Error::msg("math is overflow"))?,
             SCALE_OFFSET,
             Rounding::Down,

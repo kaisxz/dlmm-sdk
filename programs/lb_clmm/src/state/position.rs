@@ -1,4 +1,4 @@
-use super::bin::Bin;
+use super::{bin::Bin, u128::u128};
 use crate::{
     constants::{MAX_BIN_PER_POSITION, NUM_REWARDS},
     errors::LBError,
@@ -11,6 +11,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use num_traits::Zero;
 use std::cell::Ref;
+use core::primitive::u128 as u128_primitive;
 
 #[account(zero_copy)]
 #[derive(InitSpace, Debug)]
@@ -86,7 +87,7 @@ impl Default for PositionV2 {
             lower_bin_id: 0,
             upper_bin_id: 0,
             last_updated_at: 0,
-            liquidity_shares: [0u128; MAX_BIN_PER_POSITION],
+            liquidity_shares: [u128::default(); MAX_BIN_PER_POSITION],
             reward_infos: [UserRewardInfo::default(); MAX_BIN_PER_POSITION],
             fee_infos: [FeeInfo::default(); MAX_BIN_PER_POSITION],
             total_claimed_fee_x_amount: 0,
@@ -136,7 +137,7 @@ impl PositionV2 {
         self.lower_bin_id = lower_bin_id;
         self.upper_bin_id = upper_bin_id;
 
-        self.liquidity_shares = [0u128; MAX_BIN_PER_POSITION];
+        self.liquidity_shares = [u128::default(); MAX_BIN_PER_POSITION];
         self.reward_infos = [UserRewardInfo::default(); MAX_BIN_PER_POSITION];
 
         self.last_updated_at = current_time;
@@ -160,7 +161,7 @@ impl PositionV2 {
         self.last_updated_at = position.last_updated_at;
 
         for (i, &liquidity_share) in position.liquidity_shares.iter().enumerate() {
-            self.liquidity_shares[i] = u128::from(liquidity_share).safe_shl(SCALE_OFFSET.into())?;
+            self.liquidity_shares[i].set(liquidity_share.safe_shl(SCALE_OFFSET.into())?.into());
         }
         Ok(())
     }
@@ -187,23 +188,23 @@ impl PositionV2 {
         Ok(self.lower_bin_id.safe_add(i as i32)?)
     }
 
-    pub fn withdraw(&mut self, bin_id: i32, liquidity_share: u128) -> Result<()> {
+    pub fn withdraw(&mut self, bin_id: i32, liquidity_share: u128_primitive) -> Result<()> {
         let idx = self.get_idx(bin_id)?;
-        self.liquidity_shares[idx] = self.liquidity_shares[idx].safe_sub(liquidity_share)?;
+        self.liquidity_shares[idx].set(self.liquidity_shares[idx].as_u128().safe_sub(liquidity_share)?);
 
         Ok(())
     }
 
-    pub fn deposit(&mut self, bin_id: i32, liquidity_share: u128) -> Result<()> {
+    pub fn deposit(&mut self, bin_id: i32, liquidity_share: u128_primitive) -> Result<()> {
         let idx = self.get_idx(bin_id)?;
-        self.liquidity_shares[idx] = self.liquidity_shares[idx].safe_add(liquidity_share)?;
+        self.liquidity_shares[idx].set(self.liquidity_shares[idx].as_u128().safe_add(liquidity_share)?);
 
         Ok(())
     }
 
-    pub fn get_liquidity_share_in_bin(&self, bin_id: i32) -> Result<u128> {
+    pub fn get_liquidity_share_in_bin(&self, bin_id: i32) -> Result<u128_primitive> {
         let idx = self.get_idx(bin_id)?;
-        Ok(self.liquidity_shares[idx])
+        Ok(self.liquidity_shares[idx].as_u128())
     }
 
     pub fn accumulate_total_claimed_rewards(&mut self, reward_index: usize, reward: u64) {
@@ -250,10 +251,11 @@ impl PositionV2 {
 
         let new_fee_x: u64 = safe_mul_shr_cast(
             self.liquidity_shares[idx]
+                .as_u128()
                 .safe_shr(SCALE_OFFSET.into())?
                 .try_into()
                 .map_err(|_| LBError::TypeCastFailed)?,
-            fee_x_per_token_stored.safe_sub(fee_infos.fee_x_per_token_complete)?,
+            fee_x_per_token_stored.as_u128().safe_sub(fee_infos.fee_x_per_token_complete.as_u128())?,
             SCALE_OFFSET,
             Rounding::Down,
         )?;
@@ -265,10 +267,11 @@ impl PositionV2 {
 
         let new_fee_y: u64 = safe_mul_shr_cast(
             self.liquidity_shares[idx]
+                .as_u128()
                 .safe_shr(SCALE_OFFSET.into())?
                 .try_into()
                 .map_err(|_| LBError::TypeCastFailed)?,
-            fee_y_per_token_stored.safe_sub(fee_infos.fee_y_per_token_complete)?,
+            fee_y_per_token_stored.as_u128().safe_sub(fee_infos.fee_y_per_token_complete.as_u128())?,
             SCALE_OFFSET,
             Rounding::Down,
         )?;
@@ -288,11 +291,13 @@ impl PositionV2 {
 
             let new_reward: u64 = safe_mul_shr_cast(
                 self.liquidity_shares[idx]
+                    .as_u128()
                     .safe_shr(SCALE_OFFSET.into())?
                     .try_into()
                     .map_err(|_| LBError::TypeCastFailed)?,
                 reward_per_token_stored
-                    .safe_sub(reward_info.reward_per_token_completes[reward_idx])?,
+                    .as_u128()
+                    .safe_sub(reward_info.reward_per_token_completes[reward_idx].as_u128())?,
                 SCALE_OFFSET,
                 Rounding::Down,
             )?;
@@ -340,7 +345,7 @@ impl PositionV2 {
 
     pub fn is_liquidity_empty(&self) -> bool {
         for (idx, liquidity_share) in self.liquidity_shares.iter().enumerate() {
-            if !liquidity_share.is_zero() {
+            if !liquidity_share.as_u128().is_zero() {
                 return false;
             }
         }
@@ -363,7 +368,7 @@ impl PositionV2 {
     /// Position is empty when rewards is 0, fees is 0, and liquidity share is 0.
     pub fn is_empty(&self) -> bool {
         for (idx, liquidity_share) in self.liquidity_shares.iter().enumerate() {
-            if !liquidity_share.is_zero() {
+            if !liquidity_share.as_u128().is_zero() {
                 return false;
             }
             let reward_infos: &UserRewardInfo = &self.reward_infos[idx];
