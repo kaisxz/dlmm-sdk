@@ -1,5 +1,10 @@
 use anchor_lang::prelude::*;
 
+// IMPORTANT: There is a known issue with u128 alignment in Anchor accounts
+// See: https://github.com/coral-xyz/anchor/issues/3114
+// This affects zero_copy accounts containing u128/i128 fields when using Rust 1.77+
+// The layout/alignment changed in newer Rust versions but Solana programs use the old layout
+// Workaround: Use repr(C) or a custom u128 wrapper struct if needed
 #[derive(Debug, Copy, Clone, InitSpace, AnchorDeserialize, AnchorSerialize, PartialEq, bytemuck::Zeroable, bytemuck::Pod)]
 #[repr(C)]
 pub struct u128(pub [u8; 16]);
