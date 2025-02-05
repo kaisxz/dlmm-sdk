@@ -28,7 +28,7 @@ pub async fn claim_fee<C: Deref<Target = impl Signer> + Clone>(
         position_state.fee_owner
     };
 
-    /*let user_token_x = get_or_create_ata(
+    let user_token_x = get_or_create_ata(
         program,
         transaction_config,
         lb_pair_state.token_x_mint,
@@ -83,7 +83,7 @@ pub async fn claim_fee<C: Deref<Target = impl Signer> + Clone>(
         .send_with_spinner_and_config(transaction_config)
         .await;
 
-    signature?;*/
+    signature?;
 
     Ok(())
 }

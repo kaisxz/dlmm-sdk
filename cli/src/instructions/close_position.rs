@@ -19,7 +19,7 @@ pub async fn close_position<C: Deref<Target = impl Signer> + Clone>(
     transaction_config: RpcSendTransactionConfig,
     compute_unit_price: Option<Instruction>,
 ) -> Result<()> {
-    /*let position_state: PositionV2 = program.account(position).await?;
+    let position_state: PositionV2 = program.account(position).await?;
     let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_position(program, position).await?;
 
     let (event_authority, _bump) = derive_event_authority_pda();
@@ -51,7 +51,7 @@ pub async fn close_position<C: Deref<Target = impl Signer> + Clone>(
         .send_with_spinner_and_config(transaction_config)
         .await;
 
-    signature?;*/
+    signature?;
 
     Ok(())
 }
