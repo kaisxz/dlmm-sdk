@@ -4,14 +4,18 @@ use anchor_client::solana_client::rpc_config::RpcSendTransactionConfig;
 
 use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use anchor_client::solana_sdk::instruction::Instruction;
-use anchor_client::ThreadSafeSigner;
 use anchor_client::{solana_sdk::pubkey::Pubkey, solana_sdk::signer::Signer, Program};
+use anchor_lang::solana_program::pubkey;
+use anchor_lang::ToAccountMetas;
+use anchor_lang::InstructionData;
 
+use anchor_spl::token::spl_token;
 use anyhow::*;
 use lb_clmm::accounts;
 use lb_clmm::instruction;
 use lb_clmm::state::lb_pair::LbPair;
 use lb_clmm::utils::pda::{derive_bin_array_bitmap_extension, derive_event_authority_pda};
+use spl_associated_token_account::get_associated_token_address;
 
 use crate::instructions::utils::{get_bin_arrays_for_position, get_or_create_ata};
 
@@ -84,24 +88,48 @@ pub async fn remove_all_liquidity<C: Deref<Target = impl Signer> + Clone>(
         program: lb_clmm::ID,
     };
 
-    let ix = instruction::RemoveAllLiquidity {};
-
     let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
+
+    let remove_all_liquidity_ix = Instruction {
+        program_id: lb_clmm::ID,
+        accounts: accounts.to_account_metas(None),
+        data: instruction::RemoveAllLiquidity {}.data(),
+    };
 
     let mut request_builder = program.request();
 
+    request_builder = request_builder.instruction(remove_all_liquidity_ix);
+
+    // Add unwrap SOL instruction if needed
+    let wsol_mint = pubkey!("So11111111111111111111111111111111111111112");
+    if lb_pair_state.token_x_mint == wsol_mint || lb_pair_state.token_y_mint == wsol_mint {
+        let wsol_account = get_associated_token_address(&program.payer(), &wsol_mint);
+
+        if program.rpc().get_account(&wsol_account).await.is_ok() {
+            let close_wsol_ix = spl_token::instruction::close_account(
+                &spl_token::ID,
+                &wsol_account,
+                &program.payer(),
+                &program.payer(),
+                &[&program.payer()],
+            )
+            .unwrap();
+
+            request_builder = request_builder.instruction(close_wsol_ix);
+        }
+    }
+
+    // Füge dann die Compute Budget Instruction hinzu
+    request_builder = request_builder.instruction(compute_budget_ix);
+
+    // Füge optional die Compute Unit Price Instruction als letztes hinzu
     if let Some(compute_unit_price) = compute_unit_price {
         request_builder = request_builder.instruction(compute_unit_price);
     }
 
-    let signature = request_builder
-        .instruction(compute_budget_ix)
-        .accounts(accounts)
-        .args(ix)
+    request_builder
         .send_with_spinner_and_config(transaction_config)
-        .await;
-
-    signature?;
+        .await?;
 
     Ok(())
 }

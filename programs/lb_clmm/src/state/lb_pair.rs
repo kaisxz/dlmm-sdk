@@ -1,5 +1,6 @@
 use std::cmp::min;
 
+use super::u128::u128;
 use crate::assert_eq_admin;
 use crate::constants::{
     BASIS_POINT_MAX, BIN_ARRAY_BITMAP_SIZE, FEE_PRECISION, MAX_BIN_ID, MAX_FEE_RATE,
@@ -14,13 +15,12 @@ use crate::state::bin_array_bitmap_extension::BinArrayBitmapExtension;
 use crate::state::parameters::{StaticParameters, VariableParameters};
 use crate::{errors::LBError, math::safe_math::SafeMath};
 use anchor_lang::prelude::*;
+use core::primitive::u128 as u128_primitive;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use ruint::aliases::{U1024, U256};
 use std::ops::BitXor;
 use std::ops::Shl;
 use std::ops::Shr;
-use super::u128::u128;
-use core::primitive::u128 as u128_primitive;
 
 /// Type of the Pair. 0 = Permissionless, 1 = Permission, 2 = CustomizablePermissionless
 #[derive(Copy, Clone, Debug, PartialEq, Eq, IntoPrimitive, TryFromPrimitive)]
@@ -504,7 +504,8 @@ impl LbPair {
         let composition_fee =
             fee_amount.safe_mul(u128_primitive::from(FEE_PRECISION).safe_add(total_fee_rate)?)?;
         // 1e9 unit * 1e9 unit = 1e18, scale back
-        let scaled_down_fee = composition_fee.safe_div(u128_primitive::from(FEE_PRECISION).pow(2))?;
+        let scaled_down_fee =
+            composition_fee.safe_div(u128_primitive::from(FEE_PRECISION).pow(2))?;
 
         Ok(scaled_down_fee
             .try_into()

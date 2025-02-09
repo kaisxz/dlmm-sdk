@@ -12,7 +12,7 @@ pub struct InitializePositionPda<'info> {
 
     pub base: Signer<'info>,
     #[account(
-        init,        
+        init,
         seeds = [
             seeds::POSITION.as_ref(),
             lb_pair.key().as_ref(),

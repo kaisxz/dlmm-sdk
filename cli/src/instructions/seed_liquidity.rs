@@ -146,7 +146,10 @@ async fn get_or_create_position<C: Deref<Target = impl Signer> + Clone>(
             builder = builder.instruction(compute_unit_price_ix);
         }
 
-        builder = builder.instruction(ix).signer(base_keypair.insecure_clone()).signer(owner.insecure_clone());
+        builder = builder
+            .instruction(ix)
+            .signer(base_keypair.insecure_clone())
+            .signer(owner.insecure_clone());
         let signature = builder
             .send_with_spinner_and_config(transaction_config)
             .await;
@@ -641,7 +644,11 @@ pub async fn seed_liquidity<C: Deref<Target = impl Signer> + Clone>(
                     derive_position_pda(lb_pair, position_base_kp.pubkey(), lower_bin_id, width);
 
                 let position_state = program.account::<PositionV2>(position).await?;
-                let position_liquidity_shares = position_state.liquidity_shares.iter().map(|share| share.as_u128()).collect::<Vec<u128>>();
+                let position_liquidity_shares = position_state
+                    .liquidity_shares
+                    .iter()
+                    .map(|share| share.as_u128())
+                    .collect::<Vec<u128>>();
                 dust_deposit_state
                     .position_shares
                     .insert(position, position_liquidity_shares);

@@ -66,7 +66,7 @@ pub async fn claim_fee<C: Deref<Target = impl Signer> + Clone>(
         event_authority,
         program: lb_clmm::ID,
     };
-    
+
     let ix = instruction::ClaimFee {};
 
     let mut builder = program

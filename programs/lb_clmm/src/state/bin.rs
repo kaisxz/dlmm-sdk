@@ -1,6 +1,7 @@
 use std::cell::RefMut;
 
 use super::lb_pair::LbPair;
+use crate::state::u128::u128;
 use crate::{
     constants::{BASIS_POINT_MAX, MAX_BIN_ID, MAX_BIN_PER_ARRAY, MIN_BIN_ID, NUM_REWARDS},
     errors::*,
@@ -13,10 +14,9 @@ use crate::{
     },
 };
 use anchor_lang::prelude::*;
+use core::primitive::u128 as u128_primitive;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use num_integer::Integer;
-use core::primitive::u128 as u128_primitive;
-use crate::state::u128::u128;
 
 /// Calculate out token amount based on liquidity share and supply
 #[inline]
@@ -97,10 +97,16 @@ impl Bin {
         self.liquidity_supply.as_u128() == 0
     }
     /// Deposit to the bin.
-    pub fn deposit(&mut self, amount_x: u64, amount_y: u64, liquidity_share: u128_primitive) -> Result<()> {
+    pub fn deposit(
+        &mut self,
+        amount_x: u64,
+        amount_y: u64,
+        liquidity_share: u128_primitive,
+    ) -> Result<()> {
         self.amount_x = self.amount_x.safe_add(amount_x)?;
         self.amount_y = self.amount_y.safe_add(amount_y)?;
-        self.liquidity_supply.set(self.liquidity_supply.as_u128().safe_add(liquidity_share)?);
+        self.liquidity_supply
+            .set(self.liquidity_supply.as_u128().safe_add(liquidity_share)?);
 
         Ok(())
     }
@@ -138,15 +144,17 @@ impl Bin {
         // Fee was charged at swap-in side
         if swap_for_y {
             // Change to wrapping add later
-            self.fee_amount_x_per_token_stored.set(self
-                .fee_amount_x_per_token_stored
-                .as_u128()
-                .safe_add(fee_per_token_stored)?);
+            self.fee_amount_x_per_token_stored.set(
+                self.fee_amount_x_per_token_stored
+                    .as_u128()
+                    .safe_add(fee_per_token_stored)?,
+            );
         } else {
-            self.fee_amount_y_per_token_stored.set(self
-                .fee_amount_y_per_token_stored
-                .as_u128()
-                .safe_add(fee_per_token_stored)?);
+            self.fee_amount_y_per_token_stored.set(
+                self.fee_amount_y_per_token_stored
+                    .as_u128()
+                    .safe_add(fee_per_token_stored)?,
+            );
         }
         Ok(())
     }
@@ -263,7 +271,8 @@ impl Bin {
         self.amount_x = self.amount_x.safe_sub(out_amount_x)?;
         self.amount_y = self.amount_y.safe_sub(out_amount_y)?;
 
-        self.liquidity_supply.set(self.liquidity_supply.as_u128().safe_sub(liquidity_share)?);
+        self.liquidity_supply
+            .set(self.liquidity_supply.as_u128().safe_sub(liquidity_share)?);
 
         Ok((out_amount_x, out_amount_y))
     }
@@ -366,8 +375,10 @@ impl Bin {
 
     /// Accumulate amount X and Y swap into the bin for analytic purpose.
     pub fn accumulate_amounts_in(&mut self, amount_x_in: u64, amount_y_in: u64) {
-        self.amount_x_in.set(self.amount_x_in.as_u128().wrapping_add(amount_x_in.into()));
-        self.amount_y_in.set(self.amount_y_in.as_u128().wrapping_add(amount_y_in.into()));
+        self.amount_x_in
+            .set(self.amount_x_in.as_u128().wrapping_add(amount_x_in.into()));
+        self.amount_y_in
+            .set(self.amount_y_in.as_u128().wrapping_add(amount_y_in.into()));
     }
 }
 
@@ -424,7 +435,11 @@ impl BinArray {
         if version == LayoutVersion::V0 {
             self.version = LayoutVersion::V1.into();
             for bin in self.bins.iter_mut() {
-                bin.liquidity_supply.set(bin.liquidity_supply.as_u128().safe_shl(SCALE_OFFSET.into())?);
+                bin.liquidity_supply.set(
+                    bin.liquidity_supply
+                        .as_u128()
+                        .safe_shl(SCALE_OFFSET.into())?,
+                );
             }
         }
         Ok(())
@@ -528,10 +543,11 @@ impl BinArray {
                                 .map_err(|_| LBError::TypeCastFailed)?,
                         )?;
 
-                    bin.reward_per_token_stored[reward_idx].set(bin.reward_per_token_stored
-                        [reward_idx]
-                        .as_u128()
-                        .safe_add(reward_per_token_stored_delta)?);
+                    bin.reward_per_token_stored[reward_idx].set(
+                        bin.reward_per_token_stored[reward_idx]
+                            .as_u128()
+                            .safe_add(reward_per_token_stored_delta)?,
+                    );
                 } else {
                     // Time period which the reward was distributed to empty bin
                     let time_period =

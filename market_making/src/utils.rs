@@ -130,14 +130,17 @@ pub async fn parse_swap_event<C: Clone + std::ops::Deref<Target = impl Signer>>(
     program: &Program<C>,
     signature: Signature,
 ) -> Result<SwapEvent> {
-    let tx = program.rpc().get_transaction_with_config(
-        &signature,
-        RpcTransactionConfig {
-            encoding: Some(UiTransactionEncoding::Base64),
-            commitment: Some(CommitmentConfig::finalized()),
-            max_supported_transaction_version: Some(0),
-        },
-    ).await?;
+    let tx = program
+        .rpc()
+        .get_transaction_with_config(
+            &signature,
+            RpcTransactionConfig {
+                encoding: Some(UiTransactionEncoding::Base64),
+                commitment: Some(CommitmentConfig::finalized()),
+                max_supported_transaction_version: Some(0),
+            },
+        )
+        .await?;
 
     if let Some(meta) = &tx.transaction.meta {
         if let OptionSerializer::Some(inner_instructions) = meta.inner_instructions.as_ref() {

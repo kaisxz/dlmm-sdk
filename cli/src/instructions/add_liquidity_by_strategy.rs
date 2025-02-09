@@ -5,6 +5,8 @@ use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_client::solana_sdk::signature::Signature;
 use anchor_client::{solana_sdk::pubkey::Pubkey, solana_sdk::signer::Signer, Program};
+use anchor_lang::ToAccountMetas;
+use anchor_lang::InstructionData;
 
 use anyhow::*;
 use lb_clmm::accounts;
@@ -44,7 +46,7 @@ pub async fn add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
         strategy_parameters,
     } = params;
 
-    /*let lb_pair_state: LbPair = program.account(lb_pair).await?;
+    let lb_pair_state: LbPair = program.account(lb_pair).await?;
 
     let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_position(program, position).await?;
 
@@ -71,6 +73,7 @@ pub async fn add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
     let bin_array_bitmap_extension = if program
         .rpc()
         .get_account(&bin_array_bitmap_extension)
+        .await
         .is_err()
     {
         None
@@ -100,35 +103,37 @@ pub async fn add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
         program: lb_clmm::ID,
     };
 
-    let ix = instruction::AddLiquidityByStrategy {
-        liquidity_parameter: LiquidityParameterByStrategy {
-            amount_x,
-            amount_y,
-            active_id,
-            max_active_bin_slippage,
-            strategy_parameters,
-        },
+    let add_liquidity_ix = Instruction {
+        program_id: lb_clmm::ID,
+        accounts: accounts.to_account_metas(None),
+        data: instruction::AddLiquidityByStrategy {
+            liquidity_parameter: LiquidityParameterByStrategy {
+                amount_x,
+                amount_y,
+                active_id,
+                max_active_bin_slippage,
+                strategy_parameters,
+            },
+        }
+        .data(),
     };
 
     let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
-
-    //TODO: Create Indempotent for WrappedSOL
-    // Check if token_x_mint is wrapped SOL
-    //TODO: Check both sides
 
     let mut request_builder = program.request();
 
     if let Some(compute_unit_price) = compute_unit_price {
         request_builder = request_builder.instruction(compute_unit_price);
-    }*/
+    }
 
-    /*let signature = request_builder
+    let signature = request_builder
+        .instruction(add_liquidity_ix)
         .instruction(compute_budget_ix)
         .accounts(accounts)
-        .args(ix)
         .send_with_spinner_and_config(transaction_config)
-        .await;*/
+        .await;
 
-    //signature.map_err(Into::into);
+    signature?;
+
     Ok(Signature::default())
 }

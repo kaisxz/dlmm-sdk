@@ -10,12 +10,12 @@ use lb_clmm::math::u128x128_math::Rounding;
 use lb_clmm::utils::pda::*;
 use std::ops::Deref;
 
+use crate::args::SelectiveRounding;
 use crate::instructions::utils::get_or_create_ata;
 use crate::math::{
     compute_base_factor_from_fee_bps, get_id_from_price, get_precise_id_from_price,
     price_per_token_to_per_lamport,
 };
-use crate::args::SelectiveRounding;
 
 #[derive(Debug)]
 pub struct InitCustomizablePermissionlessLbPairParameters {
@@ -86,7 +86,8 @@ pub async fn initialize_customizable_permissionless_lb_pair<
         token_mint_x,
         program.payer(),
         compute_unit_price.clone(),
-    ).await?;
+    )
+    .await?;
 
     let accounts = accounts::InitializeCustomizablePermissionlessLbPair {
         lb_pair,

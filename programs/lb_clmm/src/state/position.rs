@@ -9,9 +9,9 @@ use crate::{
     },
 };
 use anchor_lang::prelude::*;
+use core::primitive::u128 as u128_primitive;
 use num_traits::Zero;
 use std::cell::Ref;
-use core::primitive::u128 as u128_primitive;
 
 #[account(zero_copy)]
 #[derive(InitSpace, Debug)]
@@ -190,14 +190,22 @@ impl PositionV2 {
 
     pub fn withdraw(&mut self, bin_id: i32, liquidity_share: u128_primitive) -> Result<()> {
         let idx = self.get_idx(bin_id)?;
-        self.liquidity_shares[idx].set(self.liquidity_shares[idx].as_u128().safe_sub(liquidity_share)?);
+        self.liquidity_shares[idx].set(
+            self.liquidity_shares[idx]
+                .as_u128()
+                .safe_sub(liquidity_share)?,
+        );
 
         Ok(())
     }
 
     pub fn deposit(&mut self, bin_id: i32, liquidity_share: u128_primitive) -> Result<()> {
         let idx = self.get_idx(bin_id)?;
-        self.liquidity_shares[idx].set(self.liquidity_shares[idx].as_u128().safe_add(liquidity_share)?);
+        self.liquidity_shares[idx].set(
+            self.liquidity_shares[idx]
+                .as_u128()
+                .safe_add(liquidity_share)?,
+        );
 
         Ok(())
     }
@@ -255,7 +263,9 @@ impl PositionV2 {
                 .safe_shr(SCALE_OFFSET.into())?
                 .try_into()
                 .map_err(|_| LBError::TypeCastFailed)?,
-            fee_x_per_token_stored.as_u128().safe_sub(fee_infos.fee_x_per_token_complete.as_u128())?,
+            fee_x_per_token_stored
+                .as_u128()
+                .safe_sub(fee_infos.fee_x_per_token_complete.as_u128())?,
             SCALE_OFFSET,
             Rounding::Down,
         )?;
@@ -271,7 +281,9 @@ impl PositionV2 {
                 .safe_shr(SCALE_OFFSET.into())?
                 .try_into()
                 .map_err(|_| LBError::TypeCastFailed)?,
-            fee_y_per_token_stored.as_u128().safe_sub(fee_infos.fee_y_per_token_complete.as_u128())?,
+            fee_y_per_token_stored
+                .as_u128()
+                .safe_sub(fee_infos.fee_y_per_token_complete.as_u128())?,
             SCALE_OFFSET,
             Rounding::Down,
         )?;

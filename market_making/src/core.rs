@@ -401,7 +401,8 @@ impl Core {
             .args(ix);
 
         if is_simulation {
-            let response = simulate_transaction(vec![&payer], payer.pubkey(), &program, &builder).await?;
+            let response =
+                simulate_transaction(vec![&payer], payer.pubkey(), &program, &builder).await?;
             println!("{:?}", response);
             return Ok(SwapEvent {
                 lb_pair: Pubkey::default(),
@@ -568,7 +569,8 @@ impl Core {
                 payer.pubkey(),
                 &program,
                 &builder,
-            ).await
+            )
+            .await
             .map_err(|_| Error::msg("Cannot simulate tx"))?;
             info!("deposit {amount_x} {amount_y} {position} {:?}", simulate_tx);
         } else {
@@ -577,7 +579,8 @@ impl Core {
                 payer.pubkey(),
                 &program,
                 &builder,
-            ).await?;
+            )
+            .await?;
             info!("deposit {amount_x} {amount_y} {position} {signature}");
         }
 

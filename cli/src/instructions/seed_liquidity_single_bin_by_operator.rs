@@ -27,9 +27,9 @@ use spl_associated_token_account::{
 };
 
 use crate::{
+    args::SelectiveRounding,
     instructions::{seed_liquidity::to_wei_amount, utils::get_or_create_ata},
     math::{get_id_from_price, get_precise_id_from_price, price_per_token_to_per_lamport},
-    args::SelectiveRounding,
 };
 
 pub struct SeedLiquiditySingleBinByOperatorParameters {
