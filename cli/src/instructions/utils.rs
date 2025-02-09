@@ -64,3 +64,18 @@ pub async fn get_bin_arrays_for_position<C: Deref<Target = impl Signer> + Clone>
 
     Ok([lower_bin_array, upper_bin_array])
 }
+
+pub async fn get_bin_arrays_for_pair(
+    lb_pair: Pubkey,
+    lower_bin_id: i32,
+) -> Result<[Pubkey; 2]> {
+    let lower_bin_array_idx = BinArray::bin_id_to_bin_array_index(lower_bin_id)?;
+    let upper_bin_array_idx = lower_bin_array_idx.checked_add(1).context("MathOverflow")?;
+
+    let (lower_bin_array, _bump) =
+        derive_bin_array_pda(lb_pair, lower_bin_array_idx.into());
+    let (upper_bin_array, _bump) =
+        derive_bin_array_pda(lb_pair, upper_bin_array_idx.into());
+
+    Ok([lower_bin_array, upper_bin_array])
+}

@@ -3,12 +3,14 @@ use std::ops::Deref;
 use anchor_client::solana_client::rpc_config::RpcSendTransactionConfig;
 use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use anchor_client::solana_sdk::instruction::Instruction;
+use anchor_client::solana_sdk::pubkey;
 use anchor_client::solana_sdk::signature::Keypair;
 use anchor_client::{solana_sdk::pubkey::Pubkey, solana_sdk::signer::Signer, Program};
 use anchor_lang::InstructionData;
 
 use anchor_lang::prelude::AccountMeta;
 use anchor_lang::ToAccountMetas;
+use anchor_spl::token::spl_token;
 use anyhow::*;
 use lb_clmm::accounts;
 use lb_clmm::instruction;
@@ -18,7 +20,7 @@ use lb_clmm::utils::pda::{derive_bin_array_bitmap_extension, derive_event_author
 use mpl_token_metadata::accounts::Metadata;
 use spl_associated_token_account::get_associated_token_address;
 
-use super::utils::{get_bin_arrays_for_position, get_or_create_ata};
+use super::utils::{get_bin_arrays_for_pair, get_bin_arrays_for_position, get_or_create_ata};
 
 #[derive(Debug)]
 pub struct InitPositionAndAddLiquidityByStrategyParameters {
@@ -57,8 +59,11 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
     let (event_authority, _bump) = derive_event_authority_pda();
 
     let lb_pair_state: LbPair = program.account(lb_pair).await?;
-    let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_position(program, position_keypair.pubkey()).await?;
 
+    //TODO: Jetzt problem hier!
+    let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_pair(lb_pair, lower_bin_id).await?;
+
+    //TODO: Vermutlich liegt das hierran: Account not found
     let user_token_x = get_or_create_ata(
         program,
         transaction_config,
@@ -76,6 +81,7 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         compute_unit_price.clone(),
     )
     .await?;
+    //
 
     let (bin_array_bitmap_extension, _bump) = derive_bin_array_bitmap_extension(lb_pair);
     let bin_array_bitmap_extension = if program
@@ -138,6 +144,7 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         }
         .data(),
     };
+
     let add_liquidity_ix = Instruction {
         program_id: lb_clmm::ID,
         accounts: modify_liquidity_accounts.to_account_metas(None),
@@ -153,20 +160,46 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         .data(),
     };
 
+    let initialize_account_ix = anchor_spl::token::spl_token::instruction::initialize_account3(
+        &spl_token::ID,
+        &position_keypair.pubkey(),
+        &program.payer(),
+        &program.payer(),
+    )?;
+
     let mut request_builder = program.request();
 
-    request_builder = request_builder
-        .instruction(initialize_position_ix)
-        /*.instruction(add_liquidity_ix)*/;
-
     let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
+
+    request_builder = request_builder
+        .instruction(compute_budget_ix)
+        //.instruction(initialize_account_ix) //TODO: Funktioniert noch nicht
+        .instruction(initialize_position_ix)
+        .instruction(add_liquidity_ix);
 
     if let Some(compute_unit_price) = compute_unit_price {
         request_builder = request_builder.instruction(compute_unit_price);
     }
 
+    let wsol_mint = pubkey!("So11111111111111111111111111111111111111112");
+    if lb_pair_state.token_x_mint == wsol_mint || lb_pair_state.token_y_mint == wsol_mint {
+        let wsol_account = get_associated_token_address(&program.payer(), &wsol_mint);
+
+        if program.rpc().get_account(&wsol_account).await.is_ok() {
+            let close_wsol_ix = spl_token::instruction::close_account(
+                &spl_token::ID,
+                &wsol_account,
+                &program.payer(),
+                &program.payer(),
+                &[&program.payer()],
+            )
+            .unwrap();
+
+            request_builder = request_builder.instruction(close_wsol_ix);
+        }
+    }
+
     let signature = request_builder
-        .instruction(compute_budget_ix)
         .signer(position_keypair.insecure_clone())
         .send_with_spinner_and_config(transaction_config)
         .await;
