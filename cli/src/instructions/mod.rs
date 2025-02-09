@@ -15,6 +15,7 @@ pub mod initialize_customizable_permissionless_lb_pair;
 pub mod initialize_lb_pair;
 pub mod initialize_permission_lb_pair;
 pub mod initialize_position;
+pub mod initialize_position_and_add_liquidity_by_strategy;
 pub mod initialize_position_with_price_range;
 pub mod initialize_preset_parameter;
 pub mod initialize_reward;
