@@ -20,7 +20,7 @@ use lb_clmm::utils::pda::{derive_bin_array_bitmap_extension, derive_event_author
 use mpl_token_metadata::accounts::Metadata;
 use spl_associated_token_account::get_associated_token_address;
 
-use super::utils::{get_bin_arrays_for_pair, get_bin_arrays_for_position, get_or_create_ata};
+use super::utils::{get_bin_arrays_for_pair, get_or_create_ata};
 
 #[derive(Debug)]
 pub struct InitPositionAndAddLiquidityByStrategyParameters {
@@ -55,12 +55,8 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
     } = params;
 
     let position_keypair = Keypair::new();
-
     let (event_authority, _bump) = derive_event_authority_pda();
-
     let lb_pair_state: LbPair = program.account(lb_pair).await?;
-
-    //TODO: Jetzt problem hier!
     let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_pair(lb_pair, lower_bin_id).await?;
 
     //TODO: Vermutlich liegt das hierran: Account not found
@@ -141,8 +137,7 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         data: instruction::InitializePosition {
             lower_bin_id,
             width,
-        }
-        .data(),
+        }.data(),
     };
 
     let add_liquidity_ix = Instruction {
@@ -155,17 +150,17 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
                 active_id,
                 max_active_bin_slippage,
                 strategy_parameters,
-            },
+            }
         }
         .data(),
     };
 
-    let initialize_account_ix = anchor_spl::token::spl_token::instruction::initialize_account3(
+    /*let initialize_account_ix = anchor_spl::token::spl_token::instruction::initialize_account3(
         &spl_token::ID,
         &position_keypair.pubkey(),
         &program.payer(),
         &program.payer(),
-    )?;
+    )?;*/
 
     let mut request_builder = program.request();
 
