@@ -155,6 +155,7 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         .data(),
     };
 
+    //TODO: Wenn eine Sol Token ist dann wird die Initialize Account Funktion benötigt
     /*let initialize_account_ix = anchor_spl::token::spl_token::instruction::initialize_account3(
         &spl_token::ID,
         &position_keypair.pubkey(),

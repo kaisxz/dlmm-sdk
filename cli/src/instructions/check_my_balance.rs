@@ -62,10 +62,10 @@ pub async fn check_my_balance<C: Deref<Target = impl Signer> + Clone>(
         .context("get_id_from_price overflow")?;
 
     let width = MAX_BIN_PER_POSITION as i32;
-    let mut total_amount_x = 0u64;
-    let mut total_amount_y = 0u64;
-    let mut total_fee_x_pending = 0u64;
-    let mut total_fee_y_pending = 0u64;
+    let mut total_amount_x = 0u128;
+    let mut total_amount_y = 0u128;
+    let mut total_fee_x_pending = 0u128;
+    let mut total_fee_y_pending = 0u128;
 
     for i in min_active_id..max_active_id {
         let (position, _bump) = derive_position_pda(lb_pair, base_position_key, i, width);
@@ -97,8 +97,8 @@ pub async fn check_my_balance<C: Deref<Target = impl Signer> + Clone>(
                     let bin = bin_array_manager.get_bin(bin_id)?;
                     //Important: This is the amount of tokens that the user has in the bin
                     let (amount_x, amount_y) = bin.calculate_out_amount(share)?;
-                    total_amount_x = total_amount_x.safe_add(amount_x).unwrap();
-                    total_amount_y = total_amount_y.safe_add(amount_y).unwrap();
+                    total_amount_x = total_amount_x.safe_add(amount_x.into()).unwrap();
+                    total_amount_y = total_amount_y.safe_add(amount_y.into()).unwrap();
                 }
 
                 let (fee_x_pending, fee_y_pending) =
@@ -160,7 +160,7 @@ impl<'a> BinArrayManager<'a> {
     }
 
     /// Update reward + fee earning
-    pub fn get_total_fee_pending(&self, position: &PositionV2) -> Result<(u64, u64)> {
+    pub fn get_total_fee_pending(&self, position: &PositionV2) -> Result<(u128, u128)> {
         let (bin_arrays_lower_bin_id, bin_arrays_upper_bin_id) = self.get_lower_upper_bin_id()?;
 
         // Make sure that the bin arrays cover all the bins of the position.
@@ -171,8 +171,8 @@ impl<'a> BinArrayManager<'a> {
             return Err(anyhow::Error::msg("Bin array is not correct"));
         }
 
-        let mut total_fee_x = 0u64;
-        let mut total_fee_y = 0u64;
+        let mut total_fee_x = 0u128;
+        let mut total_fee_y = 0u128;
         for bin_id in position.lower_bin_id..=position.upper_bin_id {
             let bin = self.get_bin(bin_id)?;
             let (fee_x_pending, fee_y_pending) =
@@ -192,14 +192,14 @@ impl<'a> BinArrayManager<'a> {
         position: &PositionV2,
         bin_id: i32,
         bin: &Bin,
-    ) -> Result<(u64, u64)> {
+    ) -> Result<(u128, u128)> {
         let idx = position.get_idx(bin_id)?;
 
         let fee_infos = &position.fee_infos[idx];
 
         let fee_x_per_token_stored = bin.fee_amount_x_per_token_stored;
 
-        let new_fee_x: u64 = safe_mul_shr_cast(
+        let new_fee_x: u128 = safe_mul_shr_cast(
             position.liquidity_shares[idx].as_u128(),
             fee_x_per_token_stored
                 .as_u128()
@@ -210,11 +210,11 @@ impl<'a> BinArrayManager<'a> {
         )?;
 
         let fee_x_pending = new_fee_x
-            .safe_add(fee_infos.fee_x_pending)
+            .safe_add(fee_infos.fee_x_pending.into())
             .map_err(|_| anyhow::Error::msg("math is overflow"))?;
 
         let fee_y_per_token_stored = bin.fee_amount_y_per_token_stored;
-        let new_fee_y: u64 = safe_mul_shr_cast(
+        let new_fee_y: u128 = safe_mul_shr_cast(
             position.liquidity_shares[idx].as_u128(),
             fee_y_per_token_stored
                 .as_u128()
@@ -225,7 +225,7 @@ impl<'a> BinArrayManager<'a> {
         )?;
 
         let fee_y_pending = new_fee_y
-            .safe_add(fee_infos.fee_y_pending)
+            .safe_add(fee_infos.fee_y_pending.into())
             .map_err(|_| anyhow::Error::msg("math is overflow"))?;
 
         Ok((fee_x_pending, fee_y_pending))
