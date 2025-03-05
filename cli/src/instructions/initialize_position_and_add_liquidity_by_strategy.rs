@@ -10,7 +10,7 @@ use anchor_lang::InstructionData;
 
 use anchor_lang::prelude::AccountMeta;
 use anchor_lang::ToAccountMetas;
-use anchor_spl::token::spl_token;
+use anchor_lang::prelude::CpiContext;
 use anyhow::*;
 use lb_clmm::accounts;
 use lb_clmm::instruction;
@@ -21,6 +21,7 @@ use mpl_token_metadata::accounts::Metadata;
 use spl_associated_token_account::get_associated_token_address;
 
 use super::utils::{get_bin_arrays_for_pair, get_or_create_ata};
+use anchor_client::solana_sdk::system_instruction;
 
 #[derive(Debug)]
 pub struct InitPositionAndAddLiquidityByStrategyParameters {
@@ -35,8 +36,9 @@ pub struct InitPositionAndAddLiquidityByStrategyParameters {
     pub nft_mint: Option<Pubkey>,
 }
 
-//TODO: funktioniert noch nicht
-pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target = impl Signer> + Clone>(
+pub async fn initialize_position_and_add_liquidity_by_strategy<
+    C: Deref<Target = impl Signer> + Clone,
+>(
     params: InitPositionAndAddLiquidityByStrategyParameters,
     program: &Program<C>,
     transaction_config: RpcSendTransactionConfig,
@@ -54,12 +56,12 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         nft_mint,
     } = params;
 
+    let wsol_mint = pubkey!("So11111111111111111111111111111111111111112");
     let position_keypair = Keypair::new();
     let (event_authority, _bump) = derive_event_authority_pda();
     let lb_pair_state: LbPair = program.account(lb_pair).await?;
     let [bin_array_lower, bin_array_upper] = get_bin_arrays_for_pair(lb_pair, lower_bin_id).await?;
 
-    //TODO: Vermutlich liegt das hierran: Account not found
     let user_token_x = get_or_create_ata(
         program,
         transaction_config,
@@ -77,7 +79,6 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         compute_unit_price.clone(),
     )
     .await?;
-    //
 
     let (bin_array_bitmap_extension, _bump) = derive_bin_array_bitmap_extension(lb_pair);
     let bin_array_bitmap_extension = if program
@@ -137,7 +138,8 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         data: instruction::InitializePosition {
             lower_bin_id,
             width,
-        }.data(),
+        }
+        .data(),
     };
 
     let add_liquidity_ix = Instruction {
@@ -150,26 +152,31 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
                 active_id,
                 max_active_bin_slippage,
                 strategy_parameters,
-            }
+            },
         }
         .data(),
     };
 
-    //TODO: Wenn eine Sol Token ist dann wird die Initialize Account Funktion benötigt
-    /*let initialize_account_ix = anchor_spl::token::spl_token::instruction::initialize_account3(
-        &spl_token::ID,
-        &position_keypair.pubkey(),
-        &program.payer(),
-        &program.payer(),
-    )?;*/
+    let has_sol =
+        lb_pair_state.token_x_mint == wsol_mint || lb_pair_state.token_y_mint == wsol_mint;
 
     let mut request_builder = program.request();
-
     let compute_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(1_400_000);
+    let wsol_account = get_associated_token_address(&program.payer(), &wsol_mint);
+
+    request_builder = request_builder.instruction(compute_budget_ix);
+
+    if has_sol {
+        let transfer_instruction = system_instruction::transfer(
+            &program.payer(),
+            &wsol_account,
+            amount_y,
+        );
+
+        request_builder = request_builder.instruction(transfer_instruction);
+    }
 
     request_builder = request_builder
-        .instruction(compute_budget_ix)
-        //.instruction(initialize_account_ix) //TODO: Funktioniert noch nicht
         .instruction(initialize_position_ix)
         .instruction(add_liquidity_ix);
 
@@ -177,11 +184,8 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
         request_builder = request_builder.instruction(compute_unit_price);
     }
 
-    let wsol_mint = pubkey!("So11111111111111111111111111111111111111112");
-    if lb_pair_state.token_x_mint == wsol_mint || lb_pair_state.token_y_mint == wsol_mint {
-        let wsol_account = get_associated_token_address(&program.payer(), &wsol_mint);
-
-        if program.rpc().get_account(&wsol_account).await.is_ok() {
+    if has_sol {
+        /*if program.rpc().get_account(&wsol_account).await.is_ok() {
             let close_wsol_ix = spl_token::instruction::close_account(
                 &spl_token::ID,
                 &wsol_account,
@@ -192,7 +196,7 @@ pub async fn initialize_position_and_add_liquidity_by_strategy<C: Deref<Target =
             .unwrap();
 
             request_builder = request_builder.instruction(close_wsol_ix);
-        }
+        }*/
     }
 
     let signature = request_builder

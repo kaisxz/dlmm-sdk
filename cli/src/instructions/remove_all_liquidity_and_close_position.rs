@@ -6,8 +6,8 @@ use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_client::{solana_sdk::pubkey::Pubkey, solana_sdk::signer::Signer, Program};
 use anchor_lang::solana_program::pubkey;
-use anchor_lang::ToAccountMetas;
 use anchor_lang::InstructionData;
+use anchor_lang::ToAccountMetas;
 
 use anchor_spl::token::spl_token;
 use anyhow::*;
@@ -162,8 +162,7 @@ pub async fn remove_all_liquidity_and_close_position<C: Deref<Target = impl Sign
         }
     }
 
-    request_builder = request_builder
-        .instruction(compute_budget_ix);
+    request_builder = request_builder.instruction(compute_budget_ix);
 
     if let Some(compute_unit_price) = compute_unit_price {
         request_builder = request_builder.instruction(compute_unit_price);
